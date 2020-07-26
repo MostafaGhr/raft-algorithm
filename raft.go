@@ -18,56 +18,56 @@ var timeOffset = 10
 type RPCListener int
 
 type Raft struct {
-	mu sync.Mutex 			// Lock to protect shared access to this peer's state
-	lastHeartbeat time.Time // Time for detecting leader time outs
-	myID int				// my node ID
-	nodesID []int			// all node IDs
-	myState string			// node state
-	currentTerm int			// current term for each node
-	votedFor int			// node ID which this node has voted for
-	commitIndex int  		// index of highest log entry known to be committed (initialized to 0, increases monotonically)
-	lastApplied int			// index of highest log entry applied to state machine (initialized to 0, increases monotonically)
-	nextIndex map[string]int// for each server, index of the next log entry to send to that server (initialized to leader last log index + 1)
-	matchIndex []int		// for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
-	log [100]Log			//log entries; each entry contains command for state machine, and term when entry was received by leader (first index is 1)
-	lastLog int 			//index of last log
+	mu            sync.Mutex     // Lock to protect shared access to this peer's state
+	lastHeartbeat time.Time      // Time for detecting leader time outs
+	myID          int            // my node ID
+	nodesID       []int          // all node IDs
+	myState       string         // node state
+	currentTerm   int            // current term for each node
+	votedFor      int            // node ID which this node has voted for
+	commitIndex   int            // index of highest log entry known to be committed (initialized to 0, increases monotonically)
+	lastApplied   int            // index of highest log entry applied to state machine (initialized to 0, increases monotonically)
+	nextIndex     map[string]int // for each server, index of the next log entry to send to that server (initialized to leader last log index + 1)
+	matchIndex    []int          // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
+	log           [100]Log       //log entries; each entry contains command for state machine, and term when entry was received by leader (first index is 1)
+	lastLog       int            //index of last log
 }
 
 type Log struct {
 	Command string
-	Term int
+	Term    int
 }
 
 type AppendEntriesArgs struct {
-	Term int			//leader’s term
-	LeaderId int		//so follower can redirect clients
-	PrevLogIndex int	//index of log entry immediately preceding new ones
-	PrevLogTerm int		//term of prevLogIndex entry
-	Entries Log 		//log entries to store (empty for heartbeat; may send more than one for efficiency)
-	LeaderCommit int	//leader’s commitIndex
+	Term         int //leader’s term
+	LeaderId     int //so follower can redirect clients
+	PrevLogIndex int //index of log entry immediately preceding new ones
+	PrevLogTerm  int //term of prevLogIndex entry
+	Entries      Log //log entries to store (empty for heartbeat; may send more than one for efficiency)
+	LeaderCommit int //leader’s commitIndex
 }
 type AppendEntriesReply struct {
-	Term int 			//currentTerm, for leader to update itself
-	Success bool		//true if follower contained entry matching prevLogIndex and prevLogTerm
+	Term    int  //currentTerm, for leader to update itself
+	Success bool //true if follower contained entry matching prevLogIndex and prevLogTerm
 }
 type RequestVoteArgs struct {
-	Term int 			//candidate’s term
-	CandidateId int 	//candidate requesting vote
-	LastLogIndex int 	//index of candidate’s last log entry (§5.4)
-	LastLogTerm int 	//term of candidate’s last log entry (§5.4)
+	Term         int //candidate’s term
+	CandidateId  int //candidate requesting vote
+	LastLogIndex int //index of candidate’s last log entry (§5.4)
+	LastLogTerm  int //term of candidate’s last log entry (§5.4)
 }
 type RequestVoteReply struct {
-	Term int				//currentTerm, for candidate to update itself
-	VoteGranted bool		//true means candidate received vote
+	Term        int  //currentTerm, for candidate to update itself
+	VoteGranted bool //true means candidate received vote
 
 }
 
-func SendRequestVoteRPC(ID int, args *RequestVoteArgs, reply *RequestVoteReply){
-	client, err := rpc.Dial("tcp", "localhost:" + strconv.Itoa(ID))
+func SendRequestVoteRPC(ID int, args *RequestVoteArgs, reply *RequestVoteReply) {
+	client, err := rpc.Dial("tcp", "localhost:"+strconv.Itoa(ID))
 	if err != nil {
 		println("no connection to", strconv.Itoa(ID), "could be made")
 	} else {
-		err = client.Call("RPCListener.RequestVote", &args , &reply)
+		err = client.Call("RPCListener.RequestVote", &args, &reply)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -75,12 +75,12 @@ func SendRequestVoteRPC(ID int, args *RequestVoteArgs, reply *RequestVoteReply){
 	}
 }
 
-func SendAppendEntriesRPC(ID int, args *AppendEntriesArgs, reply *AppendEntriesReply){
-	client, err := rpc.Dial("tcp", "localhost:" + strconv.Itoa(ID))
+func SendAppendEntriesRPC(ID int, args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	client, err := rpc.Dial("tcp", "localhost:"+strconv.Itoa(ID))
 	if err != nil {
 		println("no connection to", strconv.Itoa(ID), "could be made")
 	} else {
-		err = client.Call("RPCListener.AppendEntries", &args , &reply)
+		err = client.Call("RPCListener.AppendEntries", &args, &reply)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -88,7 +88,7 @@ func SendAppendEntriesRPC(ID int, args *AppendEntriesArgs, reply *AppendEntriesR
 	}
 }
 
-func (l *RPCListener)AppendEntries(input *AppendEntriesArgs, output *AppendEntriesReply) error {
+func (l *RPCListener) AppendEntries(input *AppendEntriesArgs, output *AppendEntriesReply) error {
 	rf.lastHeartbeat = time.Now()
 	output.Term = rf.currentTerm
 	//If leaderCommit > commitIndex, set commitIndex =
@@ -114,10 +114,10 @@ func (l *RPCListener)AppendEntries(input *AppendEntriesArgs, output *AppendEntri
 		rf.mu.Unlock()
 		if input.Entries.Command != "" && input.Entries.Term != -1 { // Append Log
 			println("new log appended to", rf.myID)
-			rf.log[input.PrevLogIndex + 1].Term = input.Entries.Term
-			rf.log[input.PrevLogIndex + 1].Command = input.Entries.Command
+			rf.log[input.PrevLogIndex+1].Term = input.Entries.Term
+			rf.log[input.PrevLogIndex+1].Command = input.Entries.Command
 
-		} else {	//Heartbeat
+		} else { //Heartbeat
 
 		}
 	} else { // check for prev logs and solve inconsistency
@@ -127,8 +127,8 @@ func (l *RPCListener)AppendEntries(input *AppendEntriesArgs, output *AppendEntri
 		rf.mu.Unlock()
 	}
 
-	for i, txt := range rf.log{
-		if txt.Command == ""{
+	for i, txt := range rf.log {
+		if txt.Command == "" {
 			break
 		}
 		//println(i, txt.Term, txt.Command)
@@ -139,7 +139,7 @@ func (l *RPCListener)AppendEntries(input *AppendEntriesArgs, output *AppendEntri
 	return nil
 }
 
-func (l *RPCListener)RequestVote(input *RequestVoteArgs, output *RequestVoteReply) error {
+func (l *RPCListener) RequestVote(input *RequestVoteArgs, output *RequestVoteReply) error {
 	output.Term = rf.currentTerm
 	output.VoteGranted = false
 	if input.Term > rf.currentTerm {
@@ -149,7 +149,7 @@ func (l *RPCListener)RequestVote(input *RequestVoteArgs, output *RequestVoteRepl
 		rf.mu.Unlock()
 		return nil
 	}
-	if rf.votedFor == -1 || rf.votedFor == input.CandidateId{
+	if rf.votedFor == -1 || rf.votedFor == input.CandidateId {
 		go func() {
 			time.Sleep(time.Duration(600*timeOffset) * time.Millisecond)
 			rf.votedFor = -1
@@ -162,20 +162,19 @@ func (l *RPCListener)RequestVote(input *RequestVoteArgs, output *RequestVoteRepl
 	return nil
 }
 
-
 var rf = Raft{
-	mu:            	sync.Mutex{},
-	lastHeartbeat: 	time.Now(),
-	myID:           5000,
-	nodesID:       	[]int{3000, 4000, 5000},
-	myState:       	"follower",
-	votedFor:	   	-1,
-	currentTerm: 	0,
-	commitIndex: 	0,
-	lastApplied: 	0,
-	log: 			[100]Log{{Command: "init\n", Term: 1}, {Command: "init\n", Term: 1}},
-	nextIndex: 		map[string]int{"3000" : 2, "4000" : 2, "5000" : 2},
-	lastLog: 		2,
+	mu:            sync.Mutex{},
+	lastHeartbeat: time.Now(),
+	myID:          5000,
+	nodesID:       []int{3000, 4000, 5000},
+	myState:       "follower",
+	votedFor:      -1,
+	currentTerm:   0,
+	commitIndex:   0,
+	lastApplied:   0,
+	log:           [100]Log{{Command: "init\n", Term: 1}, {Command: "init\n", Term: 1}},
+	nextIndex:     map[string]int{"3000": 2, "4000": 2, "5000": 2},
+	lastLog:       2,
 }
 
 func main() {
@@ -216,7 +215,7 @@ func main() {
 							Term:         rf.currentTerm,
 							LeaderId:     rf.myID,
 							PrevLogIndex: rf.nextIndex[strconv.Itoa(ID)] - 1,
-							PrevLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)] - 1].Term,
+							PrevLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)]-1].Term,
 							Entries: Log{Command: rf.log[rf.nextIndex[strconv.Itoa(ID)]].Command,
 								Term: rf.log[rf.nextIndex[strconv.Itoa(ID)]].Term},
 							LeaderCommit: rf.commitIndex,
@@ -237,12 +236,12 @@ func main() {
 
 				}
 				var commitCount = 0
-				for _, ID := range rf.nodesID{
-					if rf.commitIndex < rf.nextIndex[strconv.Itoa(ID)] - 1 {
+				for _, ID := range rf.nodesID {
+					if rf.commitIndex < rf.nextIndex[strconv.Itoa(ID)]-1 {
 						commitCount++
 					}
 				}
-				if commitCount - 1 >= len(rf.nodesID) / 2{
+				if commitCount-1 >= len(rf.nodesID)/2 {
 					rf.commitIndex++
 				}
 			}
@@ -272,7 +271,7 @@ func main() {
 							Term:         rf.currentTerm,
 							CandidateId:  rf.myID,
 							LastLogIndex: rf.nextIndex[strconv.Itoa(ID)] - 1,
-							LastLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)] - 1].Term,
+							LastLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)]-1].Term,
 						}, &voteReply)
 
 						println(ID, " voted for", rf.myID, voteReply.VoteGranted)
@@ -304,20 +303,10 @@ func main() {
 								Term:         rf.currentTerm,
 								LeaderId:     rf.myID,
 								PrevLogIndex: rf.nextIndex[strconv.Itoa(ID)] - 1,
-								PrevLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)] - 1].Term,
+								PrevLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)]-1].Term,
 								Entries:      Log{Command: "", Term: -1},
 								LeaderCommit: rf.commitIndex,
 							}, &AppendReply)
-
-							//if AppendReply.Success == true{
-							//	rf.mu.Lock()
-							//	rf.nextIndex[strconv.Itoa(ID)]++
-							//	rf.mu.Unlock()
-							//} else {
-							//	rf.mu.Lock()
-							//	rf.nextIndex[strconv.Itoa(ID)]--
-							//	rf.mu.Unlock()
-							//}
 						}()
 					}
 				} else {
@@ -344,38 +333,14 @@ func main() {
 				rf.mu.Lock()
 				rf.nextIndex[strconv.Itoa(rf.myID)]++
 				rf.mu.Unlock()
-
-				//for _, ID := range rf.nodesID {
-				//	func() {
-				//		var AppendReply = AppendEntriesReply{
-				//			Term:    0,
-				//			Success: false,
-				//		}
-				//		SendAppendEntriesRPC(ID, &AppendEntriesArgs{
-				//			Term:         rf.currentTerm,
-				//			LeaderId:     rf.myID,
-				//			PrevLogIndex: rf.nextIndex[strconv.Itoa(ID)] - 1,
-				//			PrevLogTerm:  rf.log[rf.nextIndex[strconv.Itoa(ID)] - 1].Term,
-				//			Entries:      Log{Command: input, Term: rf.currentTerm},
-				//			LeaderCommit: rf.commitIndex,
-				//		}, &AppendReply)
-				//
-				//		if AppendReply.Success == true {
-				//			rf.mu.Lock()
-				//			rf.nextIndex[strconv.Itoa(ID)]++
-				//			rf.mu.Unlock()
-				//		}
-				//	}()
-				//}
 			}
 			time.Sleep(time.Duration(10*timeOffset) * time.Millisecond)
 		}
 	}()
 }
 
-
-func rpcListenerSetup(){
-	netResolver, err := net.ResolveTCPAddr("tcp", "127.0.0.1:" + strconv.Itoa(rf.myID))
+func rpcListenerSetup() {
+	netResolver, err := net.ResolveTCPAddr("tcp", "127.0.0.1:"+strconv.Itoa(rf.myID))
 	if err != nil {
 		log.Fatal(err)
 	} else {
